@@ -1,92 +1,64 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts/interfaces/IERC4906.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "openzeppelin/contracts/access/Ownable.sol"
 
+contract dNFT is ERC721, Ownable{
 
-contract THLNFT is Initializable, ERC721Upgradeable, 
-    OwnableUpgradeable, 
-    UUPSUpgradeable, IERC4906 {
+    uint256 private _nextTokenId;
+    uint256 public maxSupply;
+    uint256 public mintPrice;
+    string private baseTokenURI;
 
-    uint256 public nextTokenId;
-    string public baseURI; //Using Pinata for hosting metadata and images
-    uint256 public constant MAX_POINTS = 20;
+    constructor(string memory baseURI, uint256 _maxSupply, uint256 _mintPrice) ERC721("LondyNFT", "LNFT") Onwable(msg.sender){
+        baseTokenURI = baseURI;
+        maxSupply = _maxSupply;
+        mintPrice = _mintPrice;
 
-
-
-    // Mapping
-    mapping (address => uint256) TokenOwnership; // Maps an address to the token ID of the NFT they own
-    mapping (uint256 => uint256) public tokenPoints;
-
-    // Reserve slot gap
-    uint256[50] private __gap;
-
-    // Events
-    event MintedNFT(uint256 tokenId, address owner);
-    event UpdatedMetadata(uint256 tokenId);
-    event PointsUpdated(uint256 tokenId, uint256 points);
-
-    ///@custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(address initialOwner, string memory baseURI_)  public initializer{
-        baseURI = baseURI_;
-        __ERC721_init("G1 dNFT", "THLFT");
-        __Ownable_init(initialOwner);
-        //__UUPSUpgradeable_init();
-    }
-
-    function _update(address to, uint256 tokenId, address operator) internal override  returns (address) {
-        address currentOwner = ownerOf(tokenId);
-        if (currentOwner != address(0) && to != address(0)) {
-            revert("Transfer not allowed!");
-        }
-
-        address previousOwner = super._update(to, tokenId, operator);
-        return previousOwner;
-        
-    }
-
-    function mint (address to) public onlyOwner {
-        require(balanceOf(to) == 0, "You are only allowed to mint one NFT and have already minted one");
-        _safeMint(to , nextTokenId);
-        nextTokenId++;
-
-        emit MintedNFT(nextTokenId - 1, to);
-    }
-
-    function updatePoints(uint256 tokenId, uint256 points) public onlyOwner {
-        require(tokenPoints[tokenId] + points <= MAX_POINTS, "Points exceed maximum");
-        tokenPoints[tokenId] = tokenPoints[tokenId] + points;
-
-        emit PointsUpdated(tokenId, tokenPoints[tokenId]);
-        emit UpdatedMetadata(tokenId);
-    }
-
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireOwned(tokenId);
-
-        // This takes your Pinata base URI and attaches the token ID
-        // Example: https://gateway.pinata.cloud/ipfs/CID/1.json
-        return string(abi.encodePacked(baseURI, Strings.toString(tokenId), ".json"));
-    }
-
-    function setBaseURI(string memory baseURI_) public onlyOwner {
-        baseURI = baseURI_;
     }
 
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override (ERC721Upgradeable, IERC165) returns (bool) {
-        return super.supportsInterface(interfaceId) || interfaceId == type(IERC4906).interfaceId;
+    //mint NFT, one at a time
+    function mint() external payable {
+        require(_nextTokenId <= maxSupply, "No more NFT to mint");
+        require(msg.value >= mintPrice, "Insufficient funds!");
+
+        uint256 tokenId = _nextTokenId;
+
+        _safeMint(msg.sender, tokenId);
+        _nextTokenId++;
+
     }
 
+    function ownerMint() external onlyOwner {
+        require(_nextTokenId <= maxSupply, "No more NFT to mint");
 
+        uint256 tokenId = _nextTokenId;
 
-    function _authorizeUpgrade(address newImpl) internal override  onlyOwner {}
+        _safeMint(msg.sender, tokenId);
+        _nextTokenId++;
+    }
+
+    //how many tokens have been minted for far
+    function totalSupply() public view returns(uint256){
+        return _nextTokenId;
+    }
+
+    //assign the base  to our state variable
+    function _baseURI() internal view override returns (string memory){
+        return baseTokenURI;
+    }
+
+    //set baseURI to new link
+    function setBaseURI(string memory newBaseURI) external onlyOwner {
+        baseTokenURI = newBaseURI;
+    }
+
+    //owner withdraws funds from selling NFTs
+    function withdraw() external onlyOwner {
+        require(address(this).balance == 0, "No funds in contract");
+        payable(owner()).transfer(address(this).balance);
+    }
+
 }
