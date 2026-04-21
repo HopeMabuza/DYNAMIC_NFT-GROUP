@@ -10,16 +10,16 @@ contract dNFT is ERC721, Ownable {
     uint256 public mintPrice;
     string private baseTokenURI;
 
-    constructor(string memory baseURI, uint256 _maxSupply, uint256 _mintPrice) ERC721("LondyNFT", "LNFT") Ownable() {
-        baseTokenURI = baseURI;
+    constructor(uint256 _maxSupply, uint256 _mintPrice) ERC721("GalaxyNFT", "gNFT") Ownable(msg.sender) {
+
         maxSupply = _maxSupply;
         mintPrice = _mintPrice;
     }
 
     function mint() external payable {
-        require(_nextTokenId <= maxSupply, "No more NFT to mint");
+        require(_nextTokenId < maxSupply, "No more NFT to mint");
         require(msg.value >= mintPrice, "Insufficient funds!");
-        require(balanceOf(msg.sender) == 0;, "Cannot mint more than one NFT");
+        require(balanceOf(msg.sender) == 0, "Cannot mint more than one NFT");
 
         uint256 tokenId = _nextTokenId;
         _safeMint(msg.sender, tokenId);
@@ -27,7 +27,8 @@ contract dNFT is ERC721, Ownable {
     }
 
     function ownerMint() external onlyOwner {
-        require(_nextTokenId <= maxSupply, "No more NFT to mint");
+        require(_nextTokenId < maxSupply, "No more NFT to mint");
+        require(balanceOf(msg.sender) == 0, "Cannot mint more than one NFT");
 
         uint256 tokenId = _nextTokenId;
         _safeMint(msg.sender, tokenId);
