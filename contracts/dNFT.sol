@@ -1,16 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
-contract dNFT is ERC721, Ownable {
+contract dNFT is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     uint256 private _nextTokenId;
     uint256 public maxSupply;
     uint256 public mintPrice;
     string private baseTokenURI;
 
-    constructor(uint256 _maxSupply, uint256 _mintPrice) ERC721("GalaxyNFT", "gNFT") Ownable(msg.sender) {
+    ///@custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(uint256 _maxSupply, uint256 _mintPrice) public initializer {
+        __ERC721_init("Galaxy NFT", "gNFT");
+        __Ownable_init(msg.sender);
 
         maxSupply = _maxSupply;
         mintPrice = _mintPrice;
@@ -37,6 +46,10 @@ contract dNFT is ERC721, Ownable {
 
     function totalSupply() public view returns (uint256) {
         return _nextTokenId;
+    }
+
+    function changeMintPrice(uint256 newPrice) internal onlyOwner {
+        mintPrice = newPrice;
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -67,6 +80,8 @@ contract dNFT is ERC721, Ownable {
 
     }
 
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner{
 
+    }
     
 }

@@ -18,7 +18,7 @@
         "@account-kit/infra": "^4.87.0",
         "@account-kit/smart-contracts": "^4.87.0",
         "@openzeppelin/contracts": "^5.6.1",
-        "@openzeppelin/contracts-upgradeable": "^4.9.6",
+        "@openzeppelin/contracts-upgradeable": "5.6.1",
         "@openzeppelin/hardhat-upgrades": "^3.9.1",
         "viem": "^2.47.6"
     }
