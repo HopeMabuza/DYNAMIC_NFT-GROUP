@@ -1,55 +1,57 @@
-const { ethers} = require("hardhat");
-const { parseEther } = require("viem");
+const { ethers, upgrades } = require("hardhat");
 
-async function main(){
-    const[owner, user1, user2, user3] = await ethers.getSigners();
+async function main() {
+    const [owner, user1, user2] = await ethers.getSigners();
 
-    console.log("Deploying contract....");
+
     const NFT = await ethers.getContractFactory("dNFT");
-    const mintPrice = ethers.parseEther("0.0001"); 
-    const nft = await NFT.deploy(20, mintPrice);
+    const bURI = "ipfs://QmExampleHash/";
+    const mintPrice = ethers.parseEther("0.0001");
+    const nft = await upgrades.deployProxy(NFT, [20, mintPrice, bURI], { kind: "uups" });
     await nft.waitForDeployment();
     const nftAddress = await nft.getAddress();
     console.log("NFT deployed to:", nftAddress);
-
-    console.log("Checking contract state...");
-    console.log("Max Supply: ", (await nft.maxSupply()).toString());
-    console.log("Total Supply: ", (await nft.totalSupply()).toString());
-    console.log("Contract Balance: ", (await ethers.provider.getBalance(nftAddress)).toString());
+    console.log("Contract balance:", ethers.formatEther(await ethers.provider.getBalance(nftAddress)), "ETH");
 
 
-    console.log("Minting NFTs...");
+    console.log("Successful Minting......");
     await nft.connect(owner).ownerMint();
-    console.log("Owner owns: ", (await nft.balanceOf(owner.address)).toString());
-    console.log("Total Supply increased to ", (await nft.totalSupply()).toString());
-    console.log("Contract Balance: ", (await ethers.provider.getBalance(nftAddress)).toString());
+    console.log("Owner minted, balance:", (await nft.balanceOf(owner.address)).toString());
+    console.log("Contract balance:", ethers.formatEther(await ethers.provider.getBalance(nftAddress)), "ETH");
 
-    
+
     await nft.connect(user1).mint({ value: mintPrice });
-    console.log("User1 owns: ", (await nft.balanceOf(user1.address)).toString());
-    console.log("Total Supply increased to ", (await nft.totalSupply()).toString());
-    console.log("Contract Balance: ", (await ethers.provider.getBalance(nftAddress)).toString());
+    console.log("User1 minted, balance:", (await nft.balanceOf(user1.address)).toString());
+    console.log("Contract balance:", ethers.formatEther(await ethers.provider.getBalance(nftAddress)), "ETH");
+
 
     await nft.connect(user2).mint({ value: mintPrice });
-    console.log("User2 owns: ", (await nft.balanceOf(user2.address)).toString());
-    console.log("Total Supply increased to ", (await nft.totalSupply()).toString());
-    console.log("Contract Balance: ", (await ethers.provider.getBalance(nftAddress)).toString());
+    console.log("User2 minted, balance:", (await nft.balanceOf(user2.address)).toString());
+    console.log("Contract balance:", ethers.formatEther(await ethers.provider.getBalance(nftAddress)), "ETH");
 
-    console.log("Onwer tries to mint twice....");
-    await nft.connect(owner).ownerMint().catch(e => console.log("Expected revert:", e.message));
+    console.log("Total supply:", (await nft.totalSupply()).toString());
 
-    console.log("User1 tries to mint twice....");
-    await nft.connect(user1).mint({ value: mintPrice }).catch(e => console.log("Expected revert:", e.message));
+    console.log("Double Mint Prevention.........");
+    await nft.connect(owner).ownerMint().catch(e => console.log("Owner blocked:", e.message));
+    await nft.connect(user1).mint({ value: mintPrice }).catch(e => console.log("User1 blocked:", e.message));
+    await nft.connect(user2).mint({ value: mintPrice }).catch(e => console.log("User2 blocked:", e.message));
 
-    console.log("User2 tries to transfer their NFT.....");
-    const user2TokenId = 2; 
-    await nft.connect(user2).transferFrom(user2.address, user3.address, user2TokenId).catch(e => console.log("Expected revert:", e.message));
+    
+   console.log("Token URIs.....");
 
-    console.log("Onwer withdraws money....");
+    const nftAsUser1 = nft.connect(user1);
+    console.log("User1 tokenURI before threshold points:", await nftAsUser1.tokenURI(1));
+
+    console.log("Incrementing user1 points for URI update");
+    await nft.connect(owner).updatePoints(1, 11);
+
+    console.log("User1 tokenURI after threshold points:", await nftAsUser1.tokenURI(1));
+
+
+    console.log("Contract balance:", ethers.formatEther(await ethers.provider.getBalance(nftAddress)), "ETH");
     await nft.connect(owner).withdraw();
 
-    console.log("Contract Balance: ", (await ethers.provider.getBalance(nftAddress)).toString());
-
+    console.log("Contract balance after withdraw:", ethers.formatEther(await ethers.provider.getBalance(nftAddress)), "ETH");
 }
-main().catch(console.error)
 
+main().catch(console.error);
